@@ -162,6 +162,12 @@ config FIT
 	  verified boot (secure boot using RSA).
 
 if FIT
+config FIT_SOURCE
+	string ".its source file for U-Boot FIT image"
+	help
+	  Specifies a (platform specific) FIT source file to generate the
+	  U-Boot FIT image. This could specify further image to load and/or
+	  execute.
 
 config FIT_ENABLE_SHA256_SUPPORT
 	bool "Support SHA256 checksum of FIT image contents"

@@ -159,8 +159,10 @@ static board_ipq806x_params_t *get_board_param(unsigned int machid)
 	unsigned int index = 0;
 
 	for (index = 0; index < NUM_IPQ806X_BOARDS; index++) {
-		if (machid == board_params[index].machid)
+		if (machid == board_params[index].machid){
+			printf("cdp: machid at index %d\n", index);
 			return &board_params[index];
+		}
 	}
 	BUG_ON(index == NUM_IPQ806X_BOARDS);
 	printf("cdp: Invalid machine id 0x%x\n", machid);

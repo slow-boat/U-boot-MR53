@@ -510,6 +510,28 @@ int ipq_qca8511_init(ipq_gmac_board_cfg_t *gmac_cfg)
 			SGMII_CTRL1_RSVD23(1) |
 			SGMII_CTRL1_RSVD25(2));
 
+	/* extra init */
+	qca8511_pp_reg_write(QCA8511_PORT_VLAN_FLTR, 0x3fffffff);
+	qca8511_pp_reg_write(QCA8511_PORT_TRUNK_CFG_SWPORT1, 0);
+	qca8511_pp_reg_write(0x6418,0x00020001);
+	qca8511_pp_reg_write(0x6428,0x00010001);
+	qca8511_pp_reg_write(0x6438,0x00010001);
+	qca8511_pp_reg_write(0x6448,0x00010001);
+	qca8511_pp_reg_write(0x65a8,0x00020001);
+	qca8511_pp_reg_write(0x65b8,0x00010001);
+	qca8511_pp_reg_write(0xc000,0x4800001C);
+	qca8511_pp_reg_write(0xc004,0xfff);
+	qca8511_pp_reg_write(0xc008,0x04800010);
+	qca8511_pp_reg_write(0xc010,0x44000002);
+	qca8511_pp_reg_write(0xc014,0xfff);
+	qca8511_pp_reg_write(0xc018,0x04800020);
+	qca8511_pp_reg_write(0x6414,0);
+	qca8511_pp_reg_write(0x6424,0);
+	qca8511_pp_reg_write(0x6434,0);
+	qca8511_pp_reg_write(0x6444,0);
+	qca8511_pp_reg_write(0x65a4,0);
+	qca8511_pp_reg_write(0x65b4,0);
+
 	printf("QCA8511 Init done....\n");
 	return 0;
 }

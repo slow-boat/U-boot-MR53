@@ -348,7 +348,7 @@ OBJCOPY		= $(CROSS_COMPILE)objcopy
 OBJDUMP		= $(CROSS_COMPILE)objdump
 AWK		= awk
 PERL		= perl
-PYTHON		?= python
+PYTHON		?= python3
 DTC		= dtc
 CHECK		= sparse
 
@@ -796,6 +796,11 @@ ALL-$(CONFIG_X86_RESET_VECTOR) += u-boot.rom
 endif
 ALL-$(CONFIG_MBN_HEADER) += u-boot.mbn
 
+ifneq ($(CONFIG_FIT_SOURCE),"")
+ALL-y += u-boot.bin.gz u-boot.itb
+FIT_SRC := $(subst ",,$(CONFIG_FIT_SOURCE))
+endif
+
 # enable combined SPL/u-boot/dtb rules for tegra
 ifeq ($(CONFIG_TEGRA)$(CONFIG_SPL),yy)
 ALL-y += u-boot-tegra.bin u-boot-nodtb-tegra.bin
@@ -888,9 +893,21 @@ endif
 quiet_cmd_mkheader = MKHEADER $@
 cmd_mkheader = $(PYTHON) tools/mkheader.py $(CONFIG_SYS_TEXT_BASE) $(CONFIG_IPQ_APPSBL_IMG_TYPE) $< $@
 
+quiet_cmd_gzip = GZIP $@
+cmd_gzip = gzip -c $< > $@
+
 u-boot.mbn: u-boot.bin
 	$(call if_changed,mkheader)
 
+u-boot.bin.gz: u-boot.bin
+	$(call if_changed,gzip)
+
+u-boot.its: $(FIT_SRC)	
+	$(call if_changed,copy)
+
+u-boot.itb: u-boot.its FORCE
+	$(objtree)/tools/mkimage -f $(objtree)/u-boot.its $@
+	
 %.imx: %.bin
 	$(Q)$(MAKE) $(build)=arch/arm/imx-common $@
 
@@ -1007,9 +1024,6 @@ MKIMAGEFLAGS_u-boot.pbl = -n $(srctree)/$(CONFIG_SYS_FSL_PBL_RCW:"%"=%) \
 u-boot-dtb.img u-boot.img u-boot.kwb u-boot.pbl u-boot-ivt.img: \
 		$(if $(CONFIG_SPL_LOAD_FIT),u-boot-nodtb.bin dts/dt.dtb,u-boot.bin) FORCE
 	$(call if_changed,mkimage)
-
-u-boot.itb: u-boot-nodtb.bin dts/dt.dtb $(U_BOOT_ITS) FORCE
-	$(call if_changed,mkfitimage)
 
 u-boot-spl.kwb: u-boot.img spl/u-boot-spl.bin FORCE
 	$(call if_changed,mkimage)
