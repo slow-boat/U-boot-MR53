@@ -3,16 +3,15 @@
 
 This is source code taken from here (thanks [Hal Martin](https://github.com/halmartin) ) where he made [a great start](https://github.com/halmartin/meraki-openwrt-docs/tree/main/mr53). His u-boot.itb file works great- it brings up the GBe port so tftpboot works fine.
 
-However, he [declared](https://forum.openwrt.org/t/adding-openwrt-support-for-meraki-mr53/67505/38)that he was done with it. Not surprising since its tedious work reverse engineering... there are only so many puzzles we have time to solve.
+However, [he's done with it](https://forum.openwrt.org/t/adding-openwrt-support-for-meraki-mr53/67505/38). Not surprising since its tedious work reverse engineering... there are only so many puzzles we have time to solve.
 
-Big thanks to all the other guys on that [Openwrt thread](https://forum.openwrt.org/t/adding-openwrt-support-for-meraki-mr53/67505/1) that contributed so far.
+Big thanks also to all the other guys on that [Openwrt thread](https://forum.openwrt.org/t/adding-openwrt-support-for-meraki-mr53/67505/1) who contributed so far.
 
 This repo is my attempt at making a convenient development u-boot for the MR53, so we can speed up the hacking cycle.
 
-## Mods:
-- modified ubootwrite-cryptid.py initial uploading image via serial, or getting console access from meraki bootloader.
-- modified u-boot source with working networking, and initially, boot to console.
-- tarball of toolchain needed to cross compile this u-boot.
+## Whats here:
+- ubootwrite-cryptid.py initial uploading image via serial, and escape code to access the console of Meraki u-boot.
+- u-boot source with working networking, and initially, boot to console.
 
 ## Provisioning for development:
 MR53s are now e-waste, so no problems blowing away Meraki firmware.
@@ -50,16 +49,15 @@ setenv mtdids nand0=nand0; setenv mtdparts mtdparts=nand0:0x40000@0x2c40000(boot
 nand write 0x42000000 bootkernel2 0x40000
 reset
 ```
-- this should first boot the Meraki uboot, which loads out itb from NAND at 0x2c40000 and boots our new u-boot into console with networking.
-
-If we know our itb is OK, we can probably just load it into NAND from the very first loading via ubootwrite-cryptid.py via the meraki uboot. This will save a bit of time.
+- this should first boot the Meraki u-boot, which then boots "bootkernel2" at 0x2c40000 which is now our new u-boot with console and network.
 
 ## Load new itbs to try
 set your IPs up, and put your .itb file into your tftp server...
 ```
 setenv ipaddr 10.4.0.141; setenv serverip 10.4.0.140; tftpboot 0x42000000 mr53linux.itb; bootm 0x42000000#config@3
 ```
-note that the fit file should have config@3 defined since the goal is to eventually boot our openwrt image straight from the Meraki uboot.
+- The fit file should have config@3 defined since the goal is to eventually boot our openwrt image straight from the Meraki uboot.
+- alternatively use legacy image with `go` command.
 
 ## BUILD
 - assumes we are on x86_64 linux host... extract toolchain:
