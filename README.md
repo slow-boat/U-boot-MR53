@@ -11,6 +11,7 @@ Big thanks to all the other guys on that [Openwrt thread](https://forum.openwrt.
 - build environment setup `. build.sh`
 	- this will install the required gcc cross compiler to /opt if missing
 	- run `makemr53` to do a clean .itb build
+- latest u-boot.itb included here so you don't need to build it
 
 ## New u-boot commands:
 ### `run provision_all` 
@@ -50,12 +51,16 @@ run tftpbootfit
 MR53s are now e-waste, so no problems blowing away Meraki firmware.
 
 ### prerequisites
-- python3
-- pyserial
-- picocom (or similar tool for accessing serial port)
 - 3.3V level USB-serial adapter soldered onto the MR53 serial pads.
 	- avoid adapters with strong bus hold... these seem to not work.
 	- I bought some really cheap ones with IDC flying leads that were like this. Fail.
+- build dependencies (assuming debian environment)
+```
+sudo apt install build-essential gcc make \
+    libssl-dev \
+    python3 python3-dev python3-setuptools python3-serial \
+    bc
+```
 ### process
 - Run this- it will put the u-boot.itb into RAM at 0x42000000.
 	 **This is painfully slow... ~10minutes!**
@@ -76,6 +81,7 @@ Then follow the provisioning steps above- make sure the tftp server is up etc an
 # Background of the mission:
 - bought 4x MR53s a few years ago for peanuts thinking "how hard could it be?"
 - Used ghidra to decompile [Hal Martin's](https://github.com/halmartin)itb file and find the missing switch init calls.
-- modified u-boot build so it just works and gives us a shiny meraki u-boot compatible .itb
+- then he appeared again (yay) and shared his patches- which revealed missing phy reset and the gmac1 to gmac3 init, and the source of the magic switch setup.
+- modified u-boot build so it just works and gives us a shiny meraki u-boot compatible .itb and convenient bridge into openwrt land
 ## Next steps:
-Openwrt integration... thats another repo coming soon.
+Openwrt integration... thats another repo coming *very* soon.
