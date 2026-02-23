@@ -20,6 +20,7 @@
 #include <common.h>
 #include "athrs17_phy.h"
 #include "qca8511.h"
+#include <asm/arch-ipq806x/nss/ipq_mdio.h>
 #include "../../../drivers/net/ipq806x/ipq_gmac.h"
 #undef DEBUG
 #ifdef DEBUG
@@ -399,6 +400,54 @@ static int do_qca8511_pp_phy_reg_write( cmd_tbl_t *cmdtp,
 	return 0;
 }
 
+void qca8511_regdump(void){
+	int i = 0;
+	const uint32_t addrs[] = {
+		QCA8511_QSGMII_1_CTRL(QSGMII_1_CTRL0),
+		QCA8511_QSGMII_2_CTRL(QSGMII_2_CTRL0),
+		QCA8511_QSGMII_3_CTRL(QSGMII_3_CTRL0),
+		QCA8511_QSGMII_4_CTRL(QSGMII_3_CTRL0),
+		QCA8511_PORT_STATUS_CFG(STATUS_PORT1),
+		QCA8511_PORT_STATUS_CFG(STATUS_PORT2),
+		QCA8511_PORT_STATUS_CFG(STATUS_PORT3),
+		QCA8511_PORT_STATUS_CFG(STATUS_PORT4),
+		QCA8511_GLOBAL_CTRL1,
+		QCA8511_XAUI_SGMII_SERDES13_CTRL0,
+		QCA8511_XAUI_SGMII_SERDES13_CTRL1,
+		QCA8511_PORT_VLAN_FLTR,
+		QCA8511_PORT_TRUNK_CFG_SWPORT1,
+		QCA8511_PORT_LRN_CTRL(1, 1),
+		QCA8511_PORT_LRN_CTRL(1, 2),
+		QCA8511_PORT_LRN_CTRL(1, 3),
+		QCA8511_PORT_LRN_CTRL(1, 4),
+		QCA8511_PORT_LRN_CTRL(1, 26),
+		QCA8511_PORT_LRN_CTRL(1, 27),
+		QCA8511_ISO_CTRL(0, 0),
+		QCA8511_ISO_CTRL(1, 0),
+		QCA8511_ISO_CTRL(2, 0),
+		QCA8511_ISO_CTRL(0, 1),
+		QCA8511_ISO_CTRL(1, 1),
+		QCA8511_ISO_CTRL(2, 1),
+		QCA8511_PORT_LRN_CTRL(0, 1),
+		QCA8511_PORT_LRN_CTRL(0, 2),
+		QCA8511_PORT_LRN_CTRL(0, 3),
+		QCA8511_PORT_LRN_CTRL(0, 4),
+		QCA8511_PORT_LRN_CTRL(0, 26),
+		QCA8511_PORT_LRN_CTRL(0, 27),
+	};
+	for(; i < sizeof(addrs)/sizeof(addrs[0]); i++)
+		printf("0x%x : 0x%08x\n", addrs[i], qca8511_pp_reg_read(addrs[i]));
+}
+
+static int do_qca8511_dump(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
+{
+	if (argc != 1)
+		return CMD_RET_USAGE;
+
+	qca8511_regdump();
+	return 0;
+}
+
 /*********************************************************************
  *
  * FUNCTION DESCRIPTION: This function invokes RGMII,
@@ -411,6 +460,7 @@ int ipq_qca8511_init(ipq_gmac_board_cfg_t *gmac_cfg)
 {
 	int ret;
 	uint i;
+
 	qca8511_pp_reg_write(QCA8511_QSGMII_1_CTRL(QSGMII_1_CTRL0),
 			QSGMII_1_CH0_DUPLEX_MODE |
 			QSGMII_1_CH0_LINK |
@@ -510,29 +560,38 @@ int ipq_qca8511_init(ipq_gmac_board_cfg_t *gmac_cfg)
 			SGMII_CTRL1_RSVD23(1) |
 			SGMII_CTRL1_RSVD25(2));
 
-	/* extra init */
+	/* turn off switch mac learning and vlan filtering */
+	/* disable per port vlan filtering */
 	qca8511_pp_reg_write(QCA8511_PORT_VLAN_FLTR, 0x3fffffff);
 	qca8511_pp_reg_write(QCA8511_PORT_TRUNK_CFG_SWPORT1, 0);
-	qca8511_pp_reg_write(0x6418,0x00020001);
-	qca8511_pp_reg_write(0x6428,0x00010001);
-	qca8511_pp_reg_write(0x6438,0x00010001);
-	qca8511_pp_reg_write(0x6448,0x00010001);
-	qca8511_pp_reg_write(0x65a8,0x00020001);
-	qca8511_pp_reg_write(0x65b8,0x00010001);
-	qca8511_pp_reg_write(0xc000,0x4800001C);
-	qca8511_pp_reg_write(0xc004,0xfff);
-	qca8511_pp_reg_write(0xc008,0x04800010);
-	qca8511_pp_reg_write(0xc010,0x44000002);
-	qca8511_pp_reg_write(0xc014,0xfff);
-	qca8511_pp_reg_write(0xc018,0x04800020);
-	qca8511_pp_reg_write(0x6414,0);
-	qca8511_pp_reg_write(0x6424,0);
-	qca8511_pp_reg_write(0x6434,0);
-	qca8511_pp_reg_write(0x6444,0);
-	qca8511_pp_reg_write(0x65a4,0);
-	qca8511_pp_reg_write(0x65b4,0);
 
-	printf("QCA8511 Init done....\n");
+	/*set port-isolation profile and enable CPU Learn */
+	qca8511_pp_reg_write(QCA8511_PORT_LRN_CTRL(1, 1), 0x00020001); /* profile2 for GbE */
+	qca8511_pp_reg_write(QCA8511_PORT_LRN_CTRL(1, 2), 0x00010001);
+	qca8511_pp_reg_write(QCA8511_PORT_LRN_CTRL(1, 3), 0x00010001);
+	qca8511_pp_reg_write(QCA8511_PORT_LRN_CTRL(1, 4), 0x00010001);
+	qca8511_pp_reg_write(QCA8511_PORT_LRN_CTRL(1, 26), 0x00020001); /* profile2 for GbE */
+	qca8511_pp_reg_write(QCA8511_PORT_LRN_CTRL(1, 27), 0x00010001);
+
+	/* Port-isolation entry 0 - map to profile 1*/
+	qca8511_pp_reg_write(QCA8511_ISO_CTRL(0, 0), 0x4800001C);	/* isolation ports 2,3,4,27 */
+	qca8511_pp_reg_write(QCA8511_ISO_CTRL(1, 0), 0xfff);		/* all packet types */
+	qca8511_pp_reg_write(QCA8511_ISO_CTRL(2, 0), 0x04800010);	/* use profile 1 */
+
+	/* Port-isolation entry 1 */
+	qca8511_pp_reg_write(QCA8511_ISO_CTRL(0, 1), 0x44000002);	/* isolation ports 1, 26 */
+	qca8511_pp_reg_write(QCA8511_ISO_CTRL(1, 1), 0xfff);		/* all packet types */
+	qca8511_pp_reg_write(QCA8511_ISO_CTRL(2, 1), 0x04800020);	/* use profile 2 */
+
+	/* No mac/port learning */
+	qca8511_pp_reg_write(QCA8511_PORT_LRN_CTRL(0, 1), 0);
+	qca8511_pp_reg_write(QCA8511_PORT_LRN_CTRL(0, 2), 0);
+	qca8511_pp_reg_write(QCA8511_PORT_LRN_CTRL(0, 3), 0);
+	qca8511_pp_reg_write(QCA8511_PORT_LRN_CTRL(0, 4), 0);
+	qca8511_pp_reg_write(QCA8511_PORT_LRN_CTRL(0, 26), 0);
+	qca8511_pp_reg_write(QCA8511_PORT_LRN_CTRL(0, 27), 0);
+
+	printf("QCA8511 Initialised\n");
 	return 0;
 }
 
@@ -558,4 +617,10 @@ U_BOOT_CMD(
 	mphyrw,	6,	1,	do_qca8511_pp_phy_reg_write,
 	"qca8511 packet processor PHY register write (fill)",
 	"[.b, .w, .l] phy_sel phy_addr reg_addr reg_data [count]"
+);
+
+U_BOOT_CMD(
+	swdump,	1,	0,	do_qca8511_dump,
+	"qca8511 packet processor PHY register dump all",
+	"none"
 );

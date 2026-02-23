@@ -137,13 +137,13 @@ void env_relocate_spec(void)
 	}
 
 	if (ubi_volume_read(CONFIG_ENV_UBI_VOLUME, (void *)tmp_env1,
-			    CONFIG_ENV_SIZE)) {
+			    CONFIG_ENV_SIZE) < 0) {
 		printf("\n** Unable to read env from %s:%s **\n",
 		       CONFIG_ENV_UBI_PART, CONFIG_ENV_UBI_VOLUME);
 	}
 
 	if (ubi_volume_read(CONFIG_ENV_UBI_VOLUME_REDUND, (void *)tmp_env2,
-			    CONFIG_ENV_SIZE)) {
+			    CONFIG_ENV_SIZE) < 0) {
 		printf("\n** Unable to read redundant env from %s:%s **\n",
 		       CONFIG_ENV_UBI_PART, CONFIG_ENV_UBI_VOLUME_REDUND);
 	}
@@ -202,7 +202,7 @@ void env_relocate_spec(void)
 		return;
 	}
 
-	if (ubi_volume_read(CONFIG_ENV_UBI_VOLUME, buf, CONFIG_ENV_SIZE)) {
+	if (ubi_volume_read(CONFIG_ENV_UBI_VOLUME, buf, CONFIG_ENV_SIZE) < 0) {
 		printf("\n** Unable to read env from %s:%s **\n",
 		       CONFIG_ENV_UBI_PART, CONFIG_ENV_UBI_VOLUME);
 		set_default_env(NULL);

@@ -159,10 +159,8 @@ static board_ipq806x_params_t *get_board_param(unsigned int machid)
 	unsigned int index = 0;
 
 	for (index = 0; index < NUM_IPQ806X_BOARDS; index++) {
-		if (machid == board_params[index].machid){
-			printf("cdp: machid at index %d\n", index);
+		if (machid == board_params[index].machid)
 			return &board_params[index];
-		}
 	}
 	BUG_ON(index == NUM_IPQ806X_BOARDS);
 	printf("cdp: Invalid machine id 0x%x\n", machid);
@@ -322,40 +320,54 @@ int board_init()
 #endif
 #endif
 
-        meraki_config_get_product();
-
-        if (get_meraki_product_id() == MERAKI_BOARD_YOWIE || get_meraki_product_id() == MERAKI_BOARD_CITIZENSNIPS) {
+	meraki_config_get_product();
+	switch(get_meraki_product_id()) {
+		case MERAKI_BOARD_YOWIE:
+		case MERAKI_BOARD_CITIZENSNIPS:
 #ifdef CONFIG_IPQ_SNPS_GMAC
-            (*(volatile unsigned int *) GPIO_CONFIG_ADDR(6)) = 0x2c0; // PHY enable
-            (*(volatile unsigned int *) GPIO_IN_OUT_ADDR(6)) = 0x0;   // Set to low
-            udelay(24000);
-            (*(volatile unsigned int *) GPIO_IN_OUT_ADDR(6)) = 0x2;   // Set to high
+			(*(volatile unsigned int *) GPIO_CONFIG_ADDR(6)) = 0x2c0; // PHY enable
+			(*(volatile unsigned int *) GPIO_IN_OUT_ADDR(6)) = 0x0;   // Set to low
+			udelay(24000);
+			(*(volatile unsigned int *) GPIO_IN_OUT_ADDR(6)) = 0x2;   // Set to high
 #endif
-            //GPIO2, PWM reset, output, low-active
-            (*(volatile unsigned int *)GPIO_CFG(2)) = 0x203;
-            (*(volatile unsigned int *)GPIO_IO(2)) = 0x2;//keep high level to prevent accident operation
-            //GPIO15, POE_AT_DETECT_L, input, low active
-            (*(volatile unsigned int *)GPIO_CFG(15)) = 0x3;
-            //GPIO16, GPIO_BRICK_DETC_CTL, input, high active
-            (*(volatile unsigned int *)GPIO_CFG(16)) = 0x1;
-            //GPIO26, Factory Reset button, input, low active
-            (*(volatile unsigned int *)GPIO_CFG(26)) = 0x3;
-            //GPIO31, WL_LED_ORANGE, output, high active
-            (*(volatile unsigned int *)GPIO_CFG(31)) = 0x341;
-            (*(volatile unsigned int *)GPIO_IO(31)) = 0x2; //orange on
-            //GPIO32, WL_LED_WHITE, output, high active
-            (*(volatile unsigned int *)GPIO_CFG(32)) = 0x203;
-            (*(volatile unsigned int *)GPIO_IO(32)) = 0x0; //turn white led off
+			//GPIO2, PWM reset, output, low-active
+			(*(volatile unsigned int *)GPIO_CFG(2)) = 0x203;
+			(*(volatile unsigned int *)GPIO_IO(2)) = 0x2;//keep high level to prevent accident operation
+			//GPIO15, POE_AT_DETECT_L, input, low active
+			(*(volatile unsigned int *)GPIO_CFG(15)) = 0x3;
+			//GPIO16, GPIO_BRICK_DETC_CTL, input, high active
+			(*(volatile unsigned int *)GPIO_CFG(16)) = 0x1;
+			//GPIO26, Factory Reset button, input, low active
+			(*(volatile unsigned int *)GPIO_CFG(26)) = 0x3;
+			//GPIO31, WL_LED_ORANGE, output, high active
+			(*(volatile unsigned int *)GPIO_CFG(31)) = 0x341;
+			(*(volatile unsigned int *)GPIO_IO(31)) = 0x2; //orange on
+			//GPIO32, WL_LED_WHITE, output, high active
+			(*(volatile unsigned int *)GPIO_CFG(32)) = 0x203;
+			(*(volatile unsigned int *)GPIO_IO(32)) = 0x0; //turn white led off
 
-            //GPIO68, IPQ8068 reset, output, low-active
-            (*(volatile unsigned int *)GPIO_CFG(68)) = 0x203;
-            (*(volatile unsigned int *)GPIO_IO(68)) = 0x2;
-        } else {
-            //GPIO22, IPQ8068 reset, output, low-active
-            (*(volatile unsigned int *)GPIO_CFG(22)) = 0x203;
-            (*(volatile unsigned int *)GPIO_IO(22)) = 0x2;
-        }
-
+			//GPIO68, IPQ8068 reset, output, low-active
+			(*(volatile unsigned int *)GPIO_CFG(68)) = 0x203;
+			(*(volatile unsigned int *)GPIO_IO(68)) = 0x2;
+			return 0;
+		case MERAKI_BOARD_SASQUATCH:
+		case MERAKI_BOARD_WOOKIE:
+		case MERAKI_BOARD_BIGFOOT:
+			/* PHY resets: set gpio 6,7 as output and pulse low for 24ms */
+			(*(volatile unsigned int *)GPIO_CFG(6)) = 0x300;
+			(*(volatile unsigned int *)GPIO_CFG(7)) = 0x300;
+			(*(volatile unsigned int *)GPIO_IO(6)) = 0x0;
+			(*(volatile unsigned int *)GPIO_IO(7)) = 0x0;
+			udelay(24000);
+			(*(volatile unsigned int *)GPIO_IO(6)) = 0x2;
+			(*(volatile unsigned int *)GPIO_IO(7)) = 0x2;
+			break;
+		default:
+			break;
+	}
+	//GPIO22, IPQ8068 reset, output, low-active
+	(*(volatile unsigned int *)GPIO_CFG(22)) = 0x203;
+	(*(volatile unsigned int *)GPIO_IO(22)) = 0x2;
 	return 0;
 }
 

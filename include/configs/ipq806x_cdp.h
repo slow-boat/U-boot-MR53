@@ -236,34 +236,36 @@ typedef struct {
 #define CONFIG_ENV_RANGE		        CONFIG_ENV_SIZE_MAX
 #define CONFIG_ENV_SIZE                 CONFIG_ENV_RANGE
 
-#define CONFIG_BOOTCOMMAND  "run meraki_bootkernel2; run meraki_bootkernel1"
+#define CONFIG_BOOTCOMMAND  "run meraki_bootkernel_boot"
 #define CONFIG_EXTRA_ENV_SETTINGS    \
-       "itb_config=config@1\0" \
-       "loadaddr=0x42000000\0" \
-       "signed_imgaddr=0x42000028\0" \
-       "tzaddr=0x44000000\0" \
-       "fuseaddr=0x44000000\0" \
-       "imgaddr=0x44000028\0" \
-       "set_bootargs=setenv bootargs loader=u-boot maxcpus=1\0" \
-       "set_ubi=setenv mtdids nand0=nand0; setenv mtdparts mtdparts=nand0:0x46c0000@0x36c0000(ubi); ubi part ubi\0" \
-       "part=part.safe\0" \
-       "boot_part=ubi read $loadaddr $part; bootm $loadaddr#$itb_config\0" \
-       "boot_signedpart=ubi read $tzaddr $part; validate $tzaddr && cp.b $tzaddr $loadaddr $mbnsize && bootm $signed_imgaddr#$itb_config\0" \
-       "meraki_ubi_boot=run set_bootargs; run set_ubi; boot_meraki_qca;\0" \
-       "uboot_loadaddr=0x41200000\0" \
-       "chainload_uboot=if ubi check uboot.dev; then ubi read $uboot_loadaddr uboot.dev; go $uboot_loadaddr; fi\0" \
-       "check_boot_diag_img=if ubi check boot_diagnostic; then ubi remove boot_diagnostic; ubi read $tzaddr diagnostic1; validate $tzaddr && bootm $imgaddr; fi\0" \
-       "scrloadaddr=0x41000000\0" \
-       "scrname=boot.scr\0" \
-       "check_load_boot_scr=if ubifsls $scrname; then ubifsload $scrloadaddr $scrname; bootcustom $scrloadaddr; fi\0" \
-       "check_boot_part_dev=if ubi check part.dev; then setenv part part.dev; run boot_part; fi\0" \
-       "check_dev_unlock=ubi read $tzaddr dev.crt; validate $tzaddr\0" \
-       "meraki_bootkernel_boot=run meraki_bootkernel2; run meraki_bootkernel1\0" \
-       "meraki_bootkernel2=nand read 0x42000000 0x02c40000 0x00a80000; bootbk 0x42000000 bootkernel2 $itb_config\0" \
-       "meraki_bootkernel1=nand read 0x42000000 0x021c0000 0x00a80000; bootbk 0x42000000 bootkernel1 $itb_config\0"
-
-
-#define CONFIG_AUTOBOOT_STOP_STR "xyzzy"
+	"loadaddr=0x42000000\0" \
+	"uboot_loadaddr=0x41200000\0" \
+	"set_ubi=setenv mtdids nand0=nand0; " \
+		"setenv mtdparts mtdparts=nand0:0x05100000@0x02c80000(ubi); " \
+		"ubi part ubi\0" \
+	"meraki_bootkernel_boot=run set_ubi && " \
+		"setenv filesize 0 && " \
+		"ubi read $loadaddr kernel; " \
+		"if test $filesize -eq 0; then " \
+			"echo kernel not loaded, dropping to console; " \
+		"else " \
+			"bootm $loadaddr; " \
+		"fi\0" \
+	"provision_ubi=run set_ubi && " \
+		"tftpboot $loadaddr mr53-factory.bin && " \
+		"nand erase.part ubi && " \
+		"nand write $loadaddr ubi $filesize\0" \
+	"provision_uboot=tftpboot $loadaddr u-boot.itb && " \
+		"setenv mtdids nand0=nand0 && " \
+		"setenv mtdparts mtdparts=nand0:0x40000@0x21c0000(bootkernel1)," \
+			"0x40000@0x2c40000(bootkernel2) && " \
+		"nand erase.part bootkernel1 && " \
+		"nand write $loadaddr bootkernel1 0x40000 && " \
+		"nand erase.part bootkernel2 && " \
+		"nand write $loadaddr bootkernel2 0x40000\0" \
+	"provision_all=run provision_uboot && run provision_ubi\0" \
+	"tftpbootfit=tftpboot $loadaddr mr53linux.itb && " \
+		"bootm 0x42000000#config@1\0"
 
 #define CONFIG_MTD_DEVICE
 #define CONFIG_MTD_PARTITIONS

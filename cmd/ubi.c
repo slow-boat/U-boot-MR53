@@ -337,15 +337,15 @@ int ubi_volume_read(char *volume, char *buf, size_t size)
 
 	vol = ubi_find_volume(volume);
 	if (vol == NULL)
-		return ENODEV;
+		return -ENODEV;
 
 	if (vol->updating) {
 		printf("updating");
-		return EBUSY;
+		return -EBUSY;
 	}
 	if (vol->upd_marker) {
 		printf("damaged volume, update marker is set");
-		return EBADF;
+		return -EBADF;
 	}
 	if (offp == vol->used_bytes)
 		return 0;
@@ -366,7 +366,7 @@ int ubi_volume_read(char *volume, char *buf, size_t size)
 	tbuf = malloc_cache_aligned(tbuf_size);
 	if (!tbuf) {
 		printf("NO MEM\n");
-		return ENOMEM;
+		return -ENOMEM;
 	}
 	len = size > tbuf_size ? tbuf_size : size;
 
@@ -380,8 +380,8 @@ int ubi_volume_read(char *volume, char *buf, size_t size)
 		err = ubi_eba_read_leb(ubi, vol, lnum, tbuf, off, len, 0);
 		if (err) {
 			printf("read err %x\n", err);
-			err = -err;
-			break;
+			free(tbuf);
+			return -err;
 		}
 		off += len;
 		if (off == vol->usable_leb_size) {
@@ -399,7 +399,7 @@ int ubi_volume_read(char *volume, char *buf, size_t size)
 	} while (size);
 
 	free(tbuf);
-	return err;
+	return (int)offp; /* return bytes read */
 }
 
 static int ubi_dev_scan(struct mtd_info *info, char *ubidev,
@@ -669,10 +669,20 @@ static int do_ubi(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 		}
 
 		if (argc == 3) {
-			printf("Read %lld bytes from volume %s to %lx\n", size,
-			       argv[3], addr);
+			int ret;
+			char filesize_str[32];
 
-			return ubi_volume_read(argv[3], (char *)addr, size);
+			printf("Read from volume %s to %lx\n", argv[3], addr);
+
+			ret = ubi_volume_read(argv[3], (char *)addr, size);
+			if (ret < 0) {
+				printf("Read error %d\n", ret);
+				return 1;
+			}
+			printf("Read %d bytes\n", ret);
+			snprintf(filesize_str, sizeof(filesize_str), "%x", ret);
+			setenv("filesize", filesize_str);
+			return 0;
 		}
 	}
 
