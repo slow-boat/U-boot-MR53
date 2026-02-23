@@ -1,19 +1,52 @@
-
 # U-boot (with network) for Meraki MR53
 
-This is source code taken from here (thanks [Hal Martin](https://github.com/halmartin) ) where he made [a great start](https://github.com/halmartin/meraki-openwrt-docs/tree/main/mr53). His u-boot.itb file works great- it brings up the GBe port so tftpboot works fine.
+This is source code taken from here (thanks [Hal Martin](https://github.com/halmartin) ) and his work on getting ethernet going in the bootloader.
 
-However, [he's done with it](https://forum.openwrt.org/t/adding-openwrt-support-for-meraki-mr53/67505/38). Not surprising since its tedious work reverse engineering... there are only so many puzzles we have time to solve.
+This version is destructive for existing meraki nand layout, but sets us up for easy provisioning.
 
-Big thanks also to all the other guys on that [Openwrt thread](https://forum.openwrt.org/t/adding-openwrt-support-for-meraki-mr53/67505/1) who contributed so far.
+Big thanks to all the other guys on that [Openwrt thread](https://forum.openwrt.org/t/adding-openwrt-support-for-meraki-mr53/67505/1) that contributed so far.
+## Mods:
+- modified ubootwrite-cryptid.py initial uploading image via serial, or getting console access from meraki bootloader.
+- modified u-boot source with working networking
+- build environment setup `. build.sh`
+	- this will install the required gcc cross compiler to /opt if missing
+	- run `makemr53` to do a clean .itb build
 
-This repo is my attempt at making a convenient development u-boot for the MR53, so we can speed up the hacking cycle.
+## New u-boot commands:
+### `run provision_all` 
+Installs  `u-boot.itb` and `mr53-factory.bin` from your tftp server into nand. Do this after fist loading the u-boot.itb via `ubootwrite-cryptid.py` over serial port. Run `boot` to start the new image from nand.
 
-## Whats here:
-- ubootwrite-cryptid.py initial uploading image via serial, and escape code to access the console of Meraki u-boot.
-- u-boot source with working networking, and initially, boot to console.
-
-## Provisioning for development:
+You need to set up your IP addresses first- for example
+```
+setenv ipaddr 192.168.1.1
+setenv serverip 192.168.1.254
+run provision_all
+boot
+```
+### `run provision_uboot`
+- install `u-boot.itb` into `bootkernel1` and `bootkernel2` mtd partitions. Run `reset` to reboot the bootloader into our new one via nand.
+```
+setenv ipaddr 192.168.1.1
+setenv serverip 192.168.1.254
+run provision_uboot
+reset
+```
+### `run provision_ubi`
+- install  `mr53-factory.bin` into mtd `ubi` part. Run `boot` to start it
+```
+setenv ipaddr 192.168.1.1
+setenv serverip 192.168.1.254
+run provision_ubi
+boot
+```
+### run tftpbootfit
+- download and boot `mr53linux.itb` from tftp server- doesn't touch flash. Useful for development.
+```
+setenv ipaddr 192.168.1.1
+setenv serverip 192.168.1.254
+run tftpbootfit
+```
+## Using serial loader for initial uboot provisioning
 MR53s are now e-waste, so no problems blowing away Meraki firmware.
 
 ### prerequisites
@@ -33,49 +66,16 @@ python3 ubootwrite-cryptid.py --verbose --write=u-boot.itb
 ```
 picocom -b115200 /dev/ttyUSB0
 ```
-If we want to be bold, skip the next step and write it straight to nand...
-#### boot our new u-boot
+**to exit picocom- *`ctrl-a-q`****
+
+Boot into our new uboot:
 ```
 bootm 0x42000000#config@3
 ```
-- now we can get our itb file back over network to put into RAM:
-  (adjust IP addresses for mr53 and your tftpserver which serves the new u-boot.itb)
-```
-setenv ipaddr 10.4.0.141; setenv serverip 10.4.0.140; tftpboot 0x42000000 u-boot.itb
-```
-#### replace bootkernel2 with our u-boot
-```
-setenv mtdids nand0=nand0; setenv mtdparts mtdparts=nand0:0x40000@0x2c40000(bootkernel2); nand erase.part bootkernel2;
-nand write 0x42000000 bootkernel2 0x40000
-reset
-```
-- this should first boot the Meraki u-boot, which then boots "bootkernel2" at 0x2c40000 which is now our new u-boot with console and network.
-
-## Load new itbs to try
-set your IPs up, and put your .itb file into your tftp server...
-```
-setenv ipaddr 10.4.0.141; setenv serverip 10.4.0.140; tftpboot 0x42000000 mr53linux.itb; bootm 0x42000000#config@3
-```
-- The fit file should have config@3 defined since the goal is to eventually boot our openwrt image straight from the Meraki uboot.
-- alternatively use legacy image with `go` command.
-
-## BUILD
-- assumes we are on x86_64 linux host... extract toolchain:
-```
-wget https://releases.linaro.org/archive/14.04/components/toolchain/binaries/gcc-linaro-arm-none-eabi-4.8-2014.04_linux.tar.xz
-tar -xf gcc-linaro-arm-none-eabi-4.8-2014.04_linux.tar.xz
-```
-- **build it**
-```
-export CROSS_COMPILE=gcc-linaro-arm-none-eabi-4.8-2014.04_linux/bin/arm-none-eabi-
-make cryptid_defconfig
-make
-```
-...and we have u-boot.itb for mr53
+Then follow the provisioning steps above- make sure the tftp server is up etc and run `run provision_all` in the console.
 # Background of the mission:
 - bought 4x MR53s a few years ago for peanuts thinking "how hard could it be?"
 - Used ghidra to decompile [Hal Martin's](https://github.com/halmartin)itb file and find the missing switch init calls.
 - modified u-boot build so it just works and gives us a shiny meraki u-boot compatible .itb
-
 ## Next steps:
 Openwrt integration... thats another repo coming soon.
